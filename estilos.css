@@ -1,0 +1,187 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   ESTILOS COMPARTIDOS — SISTEMA PADRÓN NOMINAL ILO
+   Este archivo es el ÚNICO lugar donde se define el diseño visual.
+   Si cambias un color o un espaciado aquí, cambia en todos los módulos.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --primary: #1d5fbf;
+  --primary-dark: #163f7a;
+  --accent: #2f6fdb;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --border: #dbe2ea;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --danger: #c0392b;
+  --warning: #b8860b;
+  --ok: #157347;
+  --naranja: #c2650a;
+  --purple: #6b3fa0;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ── Encabezado ────────────────────────────────────────────────────── */
+header { background: var(--primary); color: white; padding: 14px 24px; }
+header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+header .sub { font-size: 12px; opacity: 0.9; margin-top: 2px; }
+
+.banner-demo {
+  background: #fff3cd; color: #7a5b00; padding: 10px 24px;
+  font-size: 13px; border-bottom: 1px solid #f0d989;
+}
+
+.container { max-width: 1000px; margin: 0 auto; padding: 20px 16px 60px; }
+
+/* ── Pestañas ──────────────────────────────────────────────────────── */
+.tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 2px solid var(--border); flex-wrap: wrap; }
+.tab {
+  padding: 10px 18px; cursor: pointer; font-size: 14px; font-weight: 600;
+  color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px;
+}
+.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── Tarjetas y grillas ────────────────────────────────────────────── */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 20px; margin-bottom: 16px;
+}
+.fila2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.fila3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 14px; }
+
+/* ── Formularios ───────────────────────────────────────────────────── */
+label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+
+input[type=text], input[type=date], input[type=month], select, textarea {
+  width: 100%; padding: 9px 10px; border: 1px solid var(--border);
+  border-radius: 6px; font-size: 14px; margin-bottom: 14px;
+  font-family: inherit; background: white; color: var(--text);
+}
+input[type=text]:focus, input[type=date]:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--primary);
+}
+input[readonly] { background: #f0f4f2; color: var(--primary-dark); font-weight: 600; }
+input:disabled, select:disabled { background: #f7f8fa; color: var(--muted); }
+
+/* El selector de fecha nativo del navegador (dd/mm/yyyy + ícono calendario) */
+input[type=date]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
+input[type=date]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
+fieldset { border: 1px solid var(--border); border-radius: 8px; margin: 0 0 16px; padding: 14px 14px 2px; }
+legend {
+  font-size: 12px; font-weight: 700; color: var(--primary-dark);
+  padding: 0 6px; text-transform: uppercase; letter-spacing: .02em;
+}
+
+/* ── Botones ───────────────────────────────────────────────────────── */
+.btn { border: none; padding: 9px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 600; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-outline { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
+.btn-outline:hover { background: #eef4fc; }
+.btn-ok { background: var(--ok); color: white; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* ── Tablas ────────────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+th { background: #f0f4f2; font-weight: 600; color: var(--primary-dark); }
+tr.clickable:hover { background: #f7faf9; cursor: pointer; }
+.tabla-scroll { max-height: 300px; overflow-y: auto; }
+.tabla-scroll thead { position: sticky; top: 0; z-index: 1; }
+
+/* ── Etiquetas de estado ───────────────────────────────────────────── */
+.badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.badge-pendiente   { background: #fdf3d8; color: var(--warning); }
+.badge-aceptado    { background: #dcf3e7; color: var(--ok); }
+.badge-confirmado  { background: #dcf3e7; color: var(--ok); }
+.badge-encontrado  { background: #dcf3e7; color: var(--ok); }
+.badge-contesto    { background: #dcf3e7; color: var(--ok); }
+.badge-rechazado   { background: #fbe4e1; color: var(--danger); }
+.badge-noencontrado{ background: #fbe4e1; color: var(--danger); }
+.badge-numero      { background: #fbe4e1; color: var(--danger); }
+.badge-implicito   { background: #fbe4e1; color: var(--danger); }
+.badge-rebotado    { background: #eee2fb; color: var(--purple); }
+.badge-reprogramada{ background: #eee2fb; color: var(--purple); }
+.badge-noconstesto { background: #fdf3d8; color: var(--warning); }
+.badge-normal      { background: #dcf3e7; color: var(--ok); }
+.badge-alerta      { background: #fdf3d8; color: var(--warning); }
+.badge-importante  { background: #fde3cf; color: var(--naranja); }
+.badge-grave       { background: #fbe4e1; color: var(--danger); }
+.badge-dias-normal     { background: #dcf3e7; color: var(--ok); margin-left: 6px; }
+.badge-dias-alerta     { background: #fdf3d8; color: var(--warning); margin-left: 6px; }
+.badge-dias-importante { background: #fde3cf; color: var(--naranja); margin-left: 6px; }
+.badge-dias-grave      { background: #fbe4e1; color: var(--danger); margin-left: 6px; }
+
+/* ── Avisos y textos auxiliares ────────────────────────────────────── */
+.empty { text-align: center; color: var(--muted); padding: 28px; font-size: 13px; }
+.subtitulo { font-size: 12px; color: var(--muted); margin: -2px 0 14px; }
+.aviso-ok    { font-size: 12px; color: var(--ok); margin: 8px 0 0; }
+.aviso-error { font-size: 12px; color: var(--danger); margin: 8px 0 0; }
+.aviso-info  { font-size: 12px; color: var(--muted); margin: -4px 0 12px; }
+.aviso-manual-card {
+  background: #fdf3d8; border: 1px solid #f0d989; border-radius: 8px;
+  padding: 12px 14px; margin-bottom: 10px; font-size: 13px;
+}
+
+/* ── Barras de herramientas y filtros ──────────────────────────────── */
+.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; flex-wrap: wrap; }
+.toolbar select, .toolbar input { margin-bottom: 0; }
+.filtros-chip { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.chip {
+  font-size: 12px; padding: 5px 12px; border-radius: 16px; border: 1px solid var(--border);
+  cursor: pointer; background: white; color: var(--muted); font-weight: 600;
+}
+.chip.activo { background: var(--primary); color: white; border-color: var(--primary); }
+
+/* ── Carga de archivos ─────────────────────────────────────────────── */
+.file-drop {
+  border: 1px dashed var(--border); border-radius: 8px; padding: 14px;
+  text-align: center; color: var(--muted); font-size: 13px; cursor: pointer; background: #fafbfc;
+}
+.file-drop:hover { border-color: var(--primary); color: var(--primary); }
+
+/* ── Tarjetas de resultado ─────────────────────────────────────────── */
+.resultado-card, .decidir-card {
+  background: #f7faf9; border-radius: 8px; padding: 12px 14px;
+  margin-bottom: 14px; border: 1px solid transparent;
+}
+.resultado-card table td, .decidir-card table td { padding: 5px 8px; }
+.acciones-decision { display: flex; gap: 10px; margin-top: 4px; }
+
+/* ── Indicadores numéricos ─────────────────────────────────────────── */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 14px; margin-bottom: 4px; }
+.stat-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
+.stat-box .num { font-size: 24px; font-weight: 700; color: var(--primary); }
+.stat-box .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* ── Ficha desplegable (fila expandible en tablas de detalle/registro) ── */
+.clickable { cursor: pointer; }
+.clickable:hover { background: #f7faf9; }
+.ficha { display: none; margin-top: 10px; padding: 16px; background: #fafcfb; border: 1px solid var(--border); border-radius: 8px; }
+.ficha-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 12px 20px; }
+.ficha-item .k { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); margin-bottom: 2px; }
+.ficha-item .v { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.ficha-full { grid-column: 1 / -1; }
+
+/* ── Contador chip (cantidad de registros junto a un título) ────────── */
+.contador-chip {
+  display: inline-block; color: white; font-size: 13px; font-weight: 700;
+  padding: 2px 11px; border-radius: 7px; line-height: 1.6;
+}
+
+/* ── Formularios en 2 o 3 columnas ─────────────────────────────────── */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 16px; }
+@media (max-width: 720px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
