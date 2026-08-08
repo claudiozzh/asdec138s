@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Padrón Nominal — Ilo</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  .layout { display: flex; height: 100vh; }
+
+  .sidebar {
+    width: 250px; flex-shrink: 0; background: var(--primary-dark); color: white;
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .sidebar-marca { padding: 18px 20px 14px; border-bottom: 1px solid rgba(255,255,255,.14); }
+  .sidebar-marca h1 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: .01em; }
+  .sidebar-marca .sub { font-size: 11px; opacity: .75; margin-top: 3px; }
+
+  .nav-grupo { padding: 14px 0 4px; }
+  .nav-grupo-titulo {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+    opacity: .55; padding: 0 20px 6px; font-weight: 700;
+  }
+  .nav-item {
+    display: block; padding: 9px 20px; font-size: 13.5px; cursor: pointer;
+    color: rgba(255,255,255,.82); border-left: 3px solid transparent; font-weight: 500;
+  }
+  .nav-item:hover { background: rgba(255,255,255,.07); color: white; }
+  .nav-item.active { background: rgba(255,255,255,.13); color: white; border-left-color: #7fb3f5; font-weight: 600; }
+  .nav-item .nota { display: block; font-size: 11px; opacity: .6; font-weight: 400; margin-top: 1px; }
+
+  .sidebar-pie { margin-top: auto; padding: 14px 20px; font-size: 11px; opacity: .6; border-top: 1px solid rgba(255,255,255,.14); }
+
+  .contenido { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+  .contenido iframe { flex: 1; width: 100%; border: none; }
+
+  .inicio { padding: 32px 40px; overflow-y: auto; height: 100%; }
+  .inicio h2 { font-size: 20px; margin: 0 0 6px; color: var(--primary-dark); }
+  .inicio .intro { color: var(--muted); font-size: 14px; margin-bottom: 24px; max-width: 700px; }
+  .modulo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 14px; max-width: 940px; }
+  .modulo-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 18px; cursor: pointer;
+  }
+  .modulo-card:hover { border-color: var(--primary); }
+  .modulo-card .titulo { font-weight: 700; font-size: 14px; color: var(--primary-dark); }
+  .modulo-card .desc { font-size: 12.5px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
+  .seccion-titulo { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 26px 0 10px; }
+  .proximo { opacity: .55; cursor: default; }
+  .proximo:hover { border-color: var(--border); }
+  .etiqueta-proximo { font-size: 10px; background: #eef1f5; color: var(--muted); padding: 2px 7px; border-radius: 10px; margin-left: 6px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-marca">
+      <h1>Padrón Nominal — Ilo</h1>
+      <div class="sub">Subgerencia de Programas Sociales</div>
+    </div>
+
+    <div class="nav-grupo">
+      <div class="nav-grupo-titulo">General</div>
+      <div class="nav-item active" data-modulo="inicio" onclick="abrir('inicio')">Inicio</div>
+    </div>
+
+    <div class="nav-grupo">
+      <div class="nav-grupo-titulo">Movimientos del padrón</div>
+      <div class="nav-item" data-modulo="transito" onclick="abrir('transito')">Tránsito (enviados)</div>
+      <div class="nav-item" data-modulo="recibidos" onclick="abrir('recibidos')">Recibidos en bandeja</div>
+      <div class="nav-item" data-modulo="reubicados" onclick="abrir('reubicados')">Reubicados</div>
+      <div class="nav-item" data-modulo="bajas" onclick="abrir('bajas')">Bajas y altas</div>
+      <div class="nav-item" data-modulo="noencontrados" onclick="abrir('noencontrados')">No Encontrados</div>
+    </div>
+
+    <div class="nav-grupo">
+      <div class="nav-grupo-titulo">Trabajo de campo</div>
+      <div class="nav-item" data-modulo="visitas" onclick="abrir('visitas')">Visitas domiciliarias</div>
+      <div class="nav-item" data-modulo="llamadas" onclick="abrir('llamadas')">Registro de llamadas</div>
+    </div>
+
+    <div class="nav-grupo">
+      <div class="nav-grupo-titulo">Otros usuarios</div>
+      <div class="nav-item" data-modulo="sisfoh" onclick="abrir('sisfoh')">
+        Actualizaciones SISFOH
+        <span class="nota">Lo usa Luis Eduardo</span>
+      </div>
+    </div>
+
+    <div class="sidebar-pie">Modo de prueba — datos solo en este navegador</div>
+  </nav>
+
+  <main class="contenido" id="contenido"></main>
+</div>
+
+<script>
+const MODULOS = {
+  transito:   { archivo: "transito-modelo.html",               titulo: "Tránsito (enviados)" },
+  recibidos:  { archivo: "bandeja-recibidos-modelo.html",     titulo: "Recibidos en bandeja" },
+  reubicados: { archivo: "reubicados-modelo.html",            titulo: "Reubicados" },
+  bajas:      { archivo: "bajas-altas-modelo.html",           titulo: "Bajas y altas" },
+  noencontrados: { archivo: "no-encontrados-modelo.html",     titulo: "No Encontrados" },
+  visitas:    { archivo: "visitas-domiciliarias-modelo.html", titulo: "Visitas domiciliarias" },
+  llamadas:   { archivo: "registro-llamadas-modelo.html",     titulo: "Registro de llamadas" },
+  sisfoh:     { archivo: "sisfoh-actualizaciones-modelo.html",titulo: "Actualizaciones SISFOH" },
+};
+
+function abrir(clave) {
+  document.querySelectorAll(".nav-item").forEach(el => el.classList.toggle("active", el.dataset.modulo === clave));
+  const cont = document.getElementById("contenido");
+  if (clave === "inicio") { cont.innerHTML = plantillaInicio(); return; }
+  const mod = MODULOS[clave];
+  if (!mod) return;
+  cont.innerHTML = `<iframe src="${mod.archivo}" title="${mod.titulo}"></iframe>`;
+  location.hash = clave;
+}
+
+function plantillaInicio() {
+  return `<div class="inicio">
+    <h2>Sistema del Padrón Nominal</h2>
+    <p class="intro">Todos los módulos comparten el mismo almacenamiento del navegador, así que lo que registras en uno se refleja en los demás — por ejemplo, los niños que aceptas en "Recibidos" y los que jalas en "Reubicados" aparecen solos en las listas priorizables de "Visitas domiciliarias".</p>
+
+    <div class="seccion-titulo">Movimientos del padrón</div>
+    <div class="modulo-grid">
+      <div class="modulo-card" onclick="abrir('transito')">
+        <div class="titulo">Tránsito (enviados)</div>
+        <div class="desc">Niños que envías a otros distritos, con seguimiento de días pendientes y estado.</div>
+      </div>
+      <div class="modulo-card" onclick="abrir('recibidos')">
+        <div class="titulo">Recibidos en bandeja</div>
+        <div class="desc">Niños que otros distritos te envían: verificas SISFOH e IPRESS, y aceptas o rechazas.</div>
+      </div>
+      <div class="modulo-card" onclick="abrir('reubicados')">
+        <div class="titulo">Reubicados</div>
+        <div class="desc">Niños que jalas al padrón de Ilo por programa social, educación, atenciones o SISFOH.</div>
+      </div>
+      <div class="modulo-card" onclick="abrir('bajas')">
+        <div class="titulo">Bajas y altas</div>
+        <div class="desc">Solicitudes de baja ante DIRESA y altas que registras tú mismo en el sistema.</div>
+      </div>
+    </div>
+
+    <div class="seccion-titulo">Trabajo de campo</div>
+    <div class="modulo-grid">
+      <div class="modulo-card" onclick="abrir('noencontrados')">
+        <div class="titulo">No Encontrados</div>
+        <div class="desc">Seguimiento de niños no ubicados (ACTIVOS, tránsito pendiente, o a mano) y verificación de reaparición.</div>
+      </div>
+      <div class="modulo-card" onclick="abrir('visitas')">
+        <div class="titulo">Visitas domiciliarias</div>
+        <div class="desc">Listas priorizables (CNV urgentes, no encontrados, recibidos/reubicados, sin celular) y registro de visitas.</div>
+      </div>
+      <div class="modulo-card" onclick="abrir('llamadas')">
+        <div class="titulo">Registro de llamadas</div>
+        <div class="desc">Identifica de qué niño es un número, registra llamadas y avisa qué celulares limpiar del padrón.</div>
+      </div>
+    </div>
+
+    <div class="seccion-titulo">Otros usuarios</div>
+    <div class="modulo-grid">
+      <div class="modulo-card" onclick="abrir('sisfoh')">
+        <div class="titulo">Actualizaciones SISFOH</div>
+        <div class="desc">Lo usa Luis Eduardo para registrar los cambios de dirección por empadronamiento, con alerta de cambio de jurisdicción.</div>
+      </div>
+    </div>
+
+    <div class="seccion-titulo">Lo que sigue</div>
+    <div class="modulo-grid">
+      <div class="modulo-card proximo">
+        <div class="titulo">Fichas de seguimiento <span class="etiqueta-proximo">Próximo</span></div>
+        <div class="desc">Consolidado automático de todas las actualizaciones del padrón, armado a partir de los demás módulos.</div>
+      </div>
+      <div class="modulo-card proximo">
+        <div class="titulo">Homologación EE.SS. <span class="etiqueta-proximo">Próximo</span></div>
+        <div class="desc">Cruce mensual con los 7 establecimientos de salud del distrito.</div>
+      </div>
+      <div class="modulo-card proximo">
+        <div class="titulo">Homologación IPF <span class="etiqueta-proximo">Próximo</span></div>
+        <div class="desc">Cruce con las instituciones prestadoras de formación.</div>
+      </div>
+      <div class="modulo-card proximo">
+        <div class="titulo">Estadística mensual <span class="etiqueta-proximo">Próximo</span></div>
+        <div class="desc">Porcentaje de actualización del padrón por fuente: homologación, CUI, visitas, llamadas, SISFOH.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+const inicial = location.hash.replace("#", "");
+abrir(MODULOS[inicial] ? inicial : "inicio");
+</script>
+</body>
+</html>
