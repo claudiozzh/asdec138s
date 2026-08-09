@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bajas y Altas — Padrón Nominal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
+<script src="https://unpkg.com/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="common.js"></script>
+<link rel="stylesheet" href="estilos.css">
+<script src="esquema.js"></script>
+<script src="jurisdiccion-reglas.js"></script>
+<style>
+  /* Estilos propios de este módulo (el resto vive en estilos.css) */
+  .file-chip { display: inline-block; font-size: 12px; background: #eaf1fb; border: 1px solid var(--accent); color: var(--primary-dark); padding: 4px 10px; border-radius: 5px; margin: 2px 4px 2px 0; }
+  .archivos-cargados { margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Bajas y Altas — Padrón Nominal</h1>
+    <div class="sub" id="userInfo">No conectado</div>
+  </div>
+  <div>
+    <button class="btn btn-primary-inv" id="loginBtn" onclick="login()">Iniciar sesión</button>
+    <button class="btn btn-outline-inv" id="logoutBtn" onclick="logout()" style="display:none">Cerrar sesión</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div id="loginScreen" class="login-screen">
+    <h2>Solicitudes de baja y alta</h2>
+    <p>Inicia sesión con tu cuenta Microsoft 365 para registrar y consultar las solicitudes guardadas en tu OneDrive.</p>
+    <button class="btn btn-primary" style="background:var(--primary); color:white;" onclick="login()">Iniciar sesión con Microsoft</button>
+  </div>
+
+  <div id="appScreen" style="display:none">
+
+
+  <div class="tabs">
+    <div class="tab active" data-tab="baja" onclick="switchTab('baja')">Nueva baja</div>
+    <div class="tab" data-tab="alta" onclick="switchTab('alta')">Nueva alta</div>
+    <div class="tab" data-tab="verificar" onclick="switchTab('verificar')">Verificar estados</div>
+    <div class="tab" data-tab="registro" onclick="switchTab('registro')">Registro</div>
+  </div>
+
+  <div class="panel active" id="panel-baja">
+    <div class="card">
+      <label>Fecha de hoy (define qué carpeta de OneDrive se lee)</label>
+      <input type="date" id="baja-fecha" class="fecha-input">
+
+      <label>Código Padrón Nominal</label>
+      <div style="display:flex; gap:8px; margin-bottom:4px;">
+        <input type="text" id="baja-codigopadron" placeholder="8 dígitos" maxlength="8" inputmode="numeric" style="margin-bottom:0;">
+        <button class="btn btn-primary" onclick="buscarParaBaja()" style="white-space:nowrap;">Buscar</button>
+      </div>
+      <div id="baja-aviso"></div>
+      <div id="baja-resultado" style="display:none; margin-top:14px;">
+        <div style="background:#f7faf9; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
+          <table>
+            <tr><td style="color:var(--muted); width:40%;">Nombre</td><td id="b-nombre" style="text-align:right;"></td></tr>
+            <tr><td style="color:var(--muted);" id="b-documento-label">Documento</td><td id="b-documento" style="text-align:right;"></td></tr>
+            <tr><td style="color:var(--muted);">Nacimiento / edad</td><td id="b-edad" style="text-align:right;"></td></tr>
+            <tr><td style="color:var(--muted);">Dirección</td><td id="b-direccion" style="text-align:right;"></td></tr>
+            <tr><td style="color:var(--muted);">Seguro / EE.SS.</td><td id="b-seguro" style="text-align:right;"></td></tr>
+            <tr><td style="color:var(--muted);">Madre</td><td id="b-madre" style="text-align:right;"></td></tr>
+            <tr><td style="color:var(--muted);">Jefe de familia</td><td id="b-jefe" style="text-align:right;"></td></tr>
+          </table>
+        </div>
+        <label>Jurisdicción</label>
+        <div id="b-juris-aviso" style="display:none;font-size:12px;margin-bottom:4px"></div>
+        <select id="baja-jurisdiccion">
+          <option>C.S. Pampa Inalámbrica</option><option>P.S. Los Ángeles</option><option>P.S. Jhon F. Kennedy</option>
+          <option>P.S. Varadero</option><option>P.S. 18 de Mayo</option><option>C.S. Alto Ilo</option><option>C.S. Miramar</option>
+        </select>
+        <label>Responsable que solicita</label>
+        <input type="text" id="baja-responsable" placeholder="Lic. nombre completo">
+        <label>Motivo</label>
+        <textarea id="baja-motivo" rows="2" placeholder="Ej. madre indica viaje definitivo a Lima"></textarea>
+        <button class="btn btn-primary" onclick="registrarBaja()">Registrar solicitud de baja</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-alta">
+    <div class="card">
+      <p class="aviso-info">Registra aquí la solicitud <b>antes</b> de darla de alta en el sistema. Si el documento ya está en tu registro de bajas, todos los datos que ya conocíamos se completan solos — revisa igual "Dirección nueva" y "Celular nuevo", que suelen cambiar cuando el niño vuelve. Nota: a diferencia de la baja (que depende de DIRESA), la alta la das tú mismo en el sistema el mismo día — queda "PENDIENTE" solo porque el reporte diario que subes en "Verificar estados" recién la reflejará al día siguiente.</p>
+      <label>Documento (DNI / CUI / CNV)</label>
+      <div style="display:flex; gap:8px; margin-bottom:4px;">
+        <input type="text" id="alta-documento" placeholder="Ej. 94731216" style="margin-bottom:0;">
+        <button class="btn btn-outline" onclick="buscarParaAlta()" style="white-space:nowrap;">Buscar en bajas</button>
+      </div>
+      <div id="alta-aviso"></div>
+      <div class="grid3" style="margin-top:10px;">
+        <div><label>Código Padrón Nominal</label><input type="text" id="alta-codigopadron"></div>
+        <div><label>Fecha de nacimiento</label><input type="date" id="alta-fecnac"></div>
+        <div><label>Jurisdicción</label>
+          <select id="alta-jurisdiccion">
+            <option value="">-- Selecciona --</option>
+            <option>C.S. Pampa Inalámbrica</option><option>P.S. Los Ángeles</option><option>P.S. Jhon F. Kennedy</option>
+            <option>P.S. Varadero</option><option>P.S. 18 de Mayo</option><option>C.S. Alto Ilo</option><option>C.S. Miramar</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid3">
+        <div><label>Apellido Paterno</label><input type="text" id="alta-apepat"></div>
+        <div><label>Apellido Materno</label><input type="text" id="alta-apemat"></div>
+        <div><label>Nombres</label><input type="text" id="alta-nombres"></div>
+      </div>
+      <div class="grid2">
+        <div><label>Dirección nueva</label><input type="text" id="alta-direccion" placeholder="Dirección actual del niño"></div>
+        <div><label>Celular nuevo</label><input type="text" id="alta-celular" placeholder="9XXXXXXXX"></div>
+      </div>
+      <div class="grid2">
+        <div><label>Documento de la madre</label><input type="text" id="alta-dnimadre"></div>
+        <div><label>Nombre completo de la madre</label><input type="text" id="alta-nombremadre" placeholder="Apellidos, Nombres"></div>
+      </div>
+      <div class="grid2">
+        <div><label>Documento del jefe de familia</label><input type="text" id="alta-dnijefe"></div>
+        <div><label>Nombre completo del jefe de familia</label><input type="text" id="alta-nombrejefe" placeholder="Apellidos, Nombres"></div>
+      </div>
+      <label>Responsable que solicita</label>
+      <input type="text" id="alta-responsable" placeholder="Lic. nombre completo">
+      <label>Motivo</label>
+      <textarea id="alta-motivo" rows="2" placeholder="Ej. regresó de Lima, madre solicita reactivación"></textarea>
+      <button class="btn btn-primary" onclick="registrarAlta()">Registrar solicitud de alta</button>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-verificar">
+    <div class="card">
+      <p class="aviso-info">Verifica contra el padrón de otro día (uno posterior al de la solicitud). Si un niño de "baja" ya no aparece en ninguno de los 3 archivos de esa fecha, se confirma. Si un niño de "alta" ya reapareció, también se confirma.</p>
+      <label>Fecha a verificar</label>
+      <input type="date" id="verificar-fecha" class="fecha-input">
+      <button class="btn btn-primary" onclick="verificarEstados()">Verificar</button>
+      <div id="verificar-resultado" style="margin-top:16px;"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-registro">
+    <div class="toolbar">
+      <select id="mes-descarga" style="width:auto; display:inline-block; margin-right:8px; margin-bottom:0;">
+        <option value="">Todos los meses</option>
+      </select>
+      <button class="btn btn-outline" onclick="descargarExcel()">Descargar Excel (2 hojas)</button>
+    </div>
+    <div class="search-bar"><input type="text" id="searchRegistro" placeholder="Buscar por documento, nombre, responsable o jurisdicción..." oninput="renderTablas()"></div>
+    <h3 style="font-size:14px; color:var(--danger); margin-bottom:8px; display:flex; align-items:center; gap:10px;">Bajas <span id="contadorBajas" class="contador-chip" style="background:var(--danger);">0</span></h3>
+    <div class="card" id="tabla-bajas" style="padding:0; overflow:hidden;"></div>
+    <h3 style="font-size:14px; color:var(--ok); margin:20px 0 8px; display:flex; align-items:center; gap:10px;">Altas <span id="contadorAltas" class="contador-chip" style="background:var(--ok);">0</span></h3>
+    <div class="card" id="tabla-altas" style="padding:0; overflow:hidden;"></div>
+  </div>
+
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Mismas funciones de lectura del padrón que common.js, pero
+   sin ninguna dependencia de OneDrive/Graph/MSAL — todo local.
+   ============================================================ */
+/* calcularRangoReal, normalizarTexto, encontrarInfoCabeceraCodigo,
+   pareceCodigoPadronValido, extraerCodigosDeHoja, CAMPOS_PADRON,
+   mapearColumnas, buscarPorCodigoPadronEnHoja, buscarDocumentoEnHoja
+   y fechaHoyPeru ahora vienen de common.js (ya corregido, mismo criterio
+   de detección por sufijo "(DNI)/(CUI)/(CNV)" que usan los demás módulos). */
+// calcularEdad() y formatEdad() ahora vienen de esquema.js (mismo formato "0a 00m 00d" que tránsito).
+function convertirFechaISO(fechaTexto) {
+  if (/^\d{4}-\d{2}-\d{2}/.test(fechaTexto)) return fechaTexto;
+  const [d, m, y] = fechaTexto.split("/");
+  return `${y}-${m}-${d}`;
+}
+
+/* ============================================================
+   Estado — en localStorage, no en OneDrive.
+   ============================================================ */
+// fechaHoyPeru() ahora viene de common.js (ya corregida ahí también).
+
+const INDICE_PATH = `${CARPETA_BAJAS_ALTAS}/indice_bajas_altas.json`;
+let indice = { bajas: [], altas: [] };
+
+async function cargarIndice() {
+  try {
+    const data = await graphGet(INDICE_PATH);
+    indice = data || { bajas: [], altas: [] };
+  } catch (e) {
+    console.error(e);
+    indice = { bajas: [], altas: [] };
+  }
+}
+async function guardarIndice() {
+  await graphPutJson(INDICE_PATH, indice);
+}
+
+function switchTab(tab) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + tab));
+  if (tab === "registro") renderTablas();
+}
+
+let ultimoResultadoBaja = null;
+
+async function buscarParaBaja() {
+  const fecha = document.getElementById("baja-fecha").value;
+  const codigoPadron = document.getElementById("baja-codigopadron").value.trim();
+  const aviso = document.getElementById("baja-aviso");
+  const resultado = document.getElementById("baja-resultado");
+  resultado.style.display = "none";
+  if (!fecha) { aviso.innerHTML = `<div class="aviso-error">Selecciona la fecha.</div>`; return; }
+  if (!codigoPadron) { aviso.innerHTML = `<div class="aviso-error">Ingresa el Código Padrón Nominal.</div>`; return; }
+  aviso.innerHTML = `<div class="aviso-info">Buscando en tus reportes del ${fecha}…</div>`;
+  const { datos: encontrado, archivo, diagnostico } = await buscarPorCodigoPadronDelDia(fecha, codigoPadron);
+  if (!encontrado) {
+    aviso.innerHTML = `<div class="aviso-error">No se encontró ese Código Padrón Nominal en los reportes del ${fecha}.<br><small>${diagnostico.join("<br>")}</small></div>`;
+    return;
+  }
+  const bajaPendiente = indice.bajas.find(b => b.codigoPadron === encontrado.codigoPadron && b.estado === "PENDIENTE");
+  if (bajaPendiente) {
+    aviso.innerHTML = `<div class="aviso-error">Este código ya tiene una solicitud de baja PENDIENTE (del ${bajaPendiente.fechaSolicitud}, responsable: ${bajaPendiente.responsable}) — no se puede registrar otra hasta que esa se resuelva en "Verificar estados".</div>`;
+    return;
+  }
+  aviso.innerHTML = `<div class="aviso-ok">Encontrado en ${archivo}.</div>`;
+  ultimoResultadoBaja = encontrado;
+  const d = encontrado;
+  const nombreNino = nombreCompleto({ apellidoPaterno: d.apellidoPaterno, apellidoMaterno: d.apellidoMaterno, nombres: d.nombres });
+  const documentoDetectado = d.dni || d.cui || d.cnv || "";
+  const tipoDocumento = d.dni ? "DNI" : (d.cui ? "CUI" : (d.cnv ? "CNV" : ""));
+  const direccion = d.descripcionDireccion || "—";
+  document.getElementById("b-nombre").textContent = nombreNino;
+  document.getElementById("b-documento-label").textContent = tipoDocumento === "CNV" ? "Documento CNV" : "Documento CUI/DNI";
+  document.getElementById("b-documento").textContent = documentoDetectado || "—";
+  document.getElementById("b-edad").textContent = (d.fechaNacimiento || "—") + " · " + (d.edad || "—");
+  document.getElementById("b-direccion").textContent = direccion;
+  document.getElementById("b-seguro").textContent = (d.tipoSeguro || "—") + " · " + (d.eessAtencion || "—");
+  document.getElementById("b-madre").textContent = (nombreCompleto({ apellidoPaterno: d.apellidoPaternoMadre, apellidoMaterno: d.apellidoMaternoMadre, nombres: d.nombresMadre }) || "—") + (d.dniMadre ? ` (Doc. ${d.dniMadre})` : "");
+  const esPadre = String(d.vinculoJefe).trim() === "2" || normalizarTexto(d.vinculoJefe) === "PADRE";
+  document.getElementById("b-jefe").textContent = esPadre
+    ? (nombreCompleto({ apellidoPaterno: d.apellidoPaternoJefe, apellidoMaterno: d.apellidoMaternoJefe, nombres: d.nombresJefe }) || "—") + (d.dniJefe ? ` (Doc. ${d.dniJefe})` : "")
+    : `No registrado (jefe de familia: código vínculo "${d.vinculoJefe || "sin dato"}")`;
+
+  autoseleccionarJurisdiccion("baja-jurisdiccion", direccion, "b-juris-aviso");
+  resultado.style.display = "block";
+}
+
+// Preselecciona la jurisdicción que corresponde a la dirección del padrón.
+// Es una SUGERENCIA: el usuario siempre puede cambiarla a mano, y el aviso
+// deja claro de dónde salió y con qué confianza.
+function autoseleccionarJurisdiccion(idSelect, direccion, idAviso) {
+  const sel = document.getElementById(idSelect);
+  const aviso = idAviso ? document.getElementById(idAviso) : null;
+  if (!sel) return;
+  if (aviso) { aviso.textContent = ""; aviso.style.display = "none"; }
+
+  if (typeof asignarJurisdiccionDetalle !== "function") {
+    console.warn("jurisdiccion-reglas.js no está cargado");
+    return;
+  }
+  if (!direccion || direccion === "—") return;
+
+  const r = asignarJurisdiccionDetalle(direccion);
+  if (r.jurisdiccion === "NO DEFINIDO") {
+    sel.selectedIndex = 0;
+    if (aviso) {
+      aviso.textContent = "Sin jurisdicción automática" + (r.aviso ? ": " + r.aviso : ". Selecciónala manualmente.");
+      aviso.style.color = "#b26a00";
+      aviso.style.display = "block";
+    }
+    return;
+  }
+
+  // Buscar la opción del <select> que corresponde, comparando sin tildes ni puntos
+  const objetivo = normalizarJuris(r.jurisdiccion);
+  let encontrada = false;
+  for (const opt of sel.options) {
+    if (normalizarJuris(opt.value) === objetivo || normalizarJuris(opt.textContent) === objetivo) {
+      sel.value = opt.value;
+      encontrada = true;
+      break;
+    }
+  }
+
+  if (!aviso) return;
+  if (!encontrada) {
+    aviso.textContent = `La dirección corresponde a ${r.jurisdiccion}, pero no hay esa opción en la lista.`;
+    aviso.style.color = "#c62828";
+    aviso.style.display = "block";
+  } else if (r.confianza === "MEDIA") {
+    aviso.textContent = "Sugerida automáticamente (confianza media). " + r.aviso + " Verifica antes de registrar.";
+    aviso.style.color = "#b26a00";
+    aviso.style.display = "block";
+  } else {
+    aviso.textContent = "Sugerida automáticamente según la dirección del padrón.";
+    aviso.style.color = "#2e7d32";
+    aviso.style.display = "block";
+  }
+}
+
+// "C.S. Pampa Inalámbrica" y "C.S. PAMPA INALAMBRICA" deben considerarse iguales.
+// Además, los módulos escriben el nombre del EE.SS. de formas distintas
+// (las reglas dicen "P.S. KENNEDY", el selector dice "P.S. Jhon F. Kennedy"),
+// así que se reduce cada nombre a una palabra clave única.
+const CLAVE_JURIS = [
+  ["PAMPA",     "PAMPA"],
+  ["ANGELES",   "ANGELES"],
+  ["KENNEDY",   "KENNEDY"],
+  ["VARADERO",  "VARADERO"],
+  ["18 DE MAYO","18MAYO"],
+  ["ALTO ILO",  "ALTOILO"],
+  ["MIRAMAR",   "MIRAMAR"],
+];
+
+function normalizarJuris(t) {
+  const s = String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[.\-]/g, " ").replace(/\s+/g, " ").trim().toUpperCase();
+  for (const [fragmento, clave] of CLAVE_JURIS) {
+    if (s.includes(fragmento)) return clave;
+  }
+  return s;
+}
+
+// idUnico() ahora viene de esquema.js (compartida entre todos los módulos).
+
+async function registrarBaja() {
+  if (!ultimoResultadoBaja) return;
+  const d = ultimoResultadoBaja;
+  const responsable = document.getElementById("baja-responsable").value.trim();
+  const motivo = document.getElementById("baja-motivo").value.trim();
+  if (!responsable || !motivo) { alert("Completa responsable y motivo."); return; }
+  const yaPendiente = indice.bajas.find(b => b.codigoPadron === d.codigoPadron && b.estado === "PENDIENTE");
+  if (yaPendiente) { alert("Este código ya tiene una solicitud de baja PENDIENTE — no se puede registrar otra."); return; }
+  try {
+    const hoy = fechaHoyPeru();
+    const edadAlSolicitar = d.fechaNacimiento
+      ? formatEdad(calcularEdad(new Date(convertirFechaISO(d.fechaNacimiento) + "T00:00:00"), hoy))
+      : "";
+    indice.bajas.push({
+      id: idUnico(), codigoPadron: d.codigoPadron, documento: d.dni || d.cui || d.cnv || "", cnv: d.cnv || "",
+      tipoDocumento: d.dni ? "DNI" : (d.cui ? "CUI" : (d.cnv ? "CNV" : "")),
+      apellidoPaterno: d.apellidoPaterno, apellidoMaterno: d.apellidoMaterno, nombres: d.nombres,
+      fechaNacimiento: d.fechaNacimiento, edadAlSolicitar,
+      direccionActual: d.descripcionDireccion || "", referencia: d.referenciaDireccion,
+      seguro: d.tipoSeguro, eessAtencion: d.eessAtencion, eessAdscripcion: d.eessAdscripcion, jurisdiccion: document.getElementById("baja-jurisdiccion").value,
+      documentoMadre: d.dniMadre, apellidoPaternoMadre: d.apellidoPaternoMadre, apellidoMaternoMadre: d.apellidoMaternoMadre, nombresMadre: d.nombresMadre,
+      celularMadre: d.celularMadre, celularAdicionalMadre: extraerCelularDeCorreo(d.correoMadre),
+      vinculoJefe: d.vinculoJefe, documentoJefe: d.dniJefe, apellidoPaternoJefe: d.apellidoPaternoJefe, apellidoMaternoJefe: d.apellidoMaternoJefe, nombresJefe: d.nombresJefe,
+      responsable, motivo, fechaSolicitud: hoy.toISOString().slice(0, 10), estado: "PENDIENTE", fechaBaja: null, edadAlDarDeBaja: null,
+      registradoPor: (typeof REGISTRADORES !== "undefined" && REGISTRADORES.CLAUDIO) || {},
+    });
+    await guardarIndice();
+    alert("Solicitud de baja registrada en OneDrive.");
+    document.getElementById("baja-resultado").style.display = "none";
+    document.getElementById("baja-codigopadron").value = ""; document.getElementById("baja-responsable").value = ""; document.getElementById("baja-motivo").value = "";
+    ultimoResultadoBaja = null;
+    renderTablas();
+  } catch (e) {
+    alert("No se pudo registrar la baja. Error real: " + e.message + "\n\nCopia este mensaje y compártelo para revisarlo.");
+    console.error(e);
+  }
+}
+
+let ultimaCoincidenciaAlta = null;
+function buscarParaAlta() {
+  const documento = document.getElementById("alta-documento").value.trim();
+  const aviso = document.getElementById("alta-aviso");
+  if (!documento) return;
+  const encontrada = indice.bajas.find(b => b.documento === documento);
+  ultimaCoincidenciaAlta = encontrada || null;
+  if (encontrada) {
+    document.getElementById("alta-codigopadron").value = encontrada.codigoPadron || "";
+    document.getElementById("alta-apepat").value = encontrada.apellidoPaterno || "";
+    document.getElementById("alta-apemat").value = encontrada.apellidoMaterno || "";
+    document.getElementById("alta-nombres").value = encontrada.nombres || "";
+    document.getElementById("alta-fecnac").value = encontrada.fechaNacimiento ? convertirFechaISO(encontrada.fechaNacimiento) : "";
+    document.getElementById("alta-jurisdiccion").value = encontrada.jurisdiccion || "";
+    document.getElementById("alta-direccion").value = encontrada.direccionActual || "";
+    document.getElementById("alta-dnimadre").value = encontrada.documentoMadre || "";
+    document.getElementById("alta-nombremadre").value = nombreCompleto({ apellidoPaterno: encontrada.apellidoPaternoMadre, apellidoMaterno: encontrada.apellidoMaternoMadre, nombres: encontrada.nombresMadre });
+    document.getElementById("alta-dnijefe").value = encontrada.documentoJefe || "";
+    document.getElementById("alta-nombrejefe").value = nombreCompleto({ apellidoPaterno: encontrada.apellidoPaternoJefe, apellidoMaterno: encontrada.apellidoMaternoJefe, nombres: encontrada.nombresJefe });
+    aviso.innerHTML = `<div class="aviso-ok">Encontrado en tu registro de bajas — datos completados solos. Revisa "Dirección nueva" y "Celular nuevo" antes de guardar (suelen cambiar).</div>`;
+  } else {
+    aviso.innerHTML = `<div class="aviso-info">No está en tu registro de bajas — completa todos los campos a mano.</div>`;
+  }
+}
+
+const CAMPOS_ALTA_TEXTO = ["alta-documento","alta-codigopadron","alta-apepat","alta-apemat","alta-nombres","alta-fecnac",
+  "alta-direccion","alta-celular","alta-dnimadre","alta-nombremadre","alta-dnijefe","alta-nombrejefe","alta-responsable","alta-motivo"];
+
+async function registrarAlta() {
+  const documento = document.getElementById("alta-documento").value.trim();
+  const codigoPadron = document.getElementById("alta-codigopadron").value.trim();
+  const apellidoPaterno = document.getElementById("alta-apepat").value.trim();
+  const apellidoMaterno = document.getElementById("alta-apemat").value.trim();
+  const nombres = document.getElementById("alta-nombres").value.trim();
+  const fechaNacimiento = document.getElementById("alta-fecnac").value;
+  const jurisdiccion = document.getElementById("alta-jurisdiccion").value;
+  const direccionActual = document.getElementById("alta-direccion").value.trim();
+  const celular = document.getElementById("alta-celular").value.trim();
+  const documentoMadre = document.getElementById("alta-dnimadre").value.trim();
+  const nombreMadreCompleto = document.getElementById("alta-nombremadre").value.trim();
+  const documentoJefe = document.getElementById("alta-dnijefe").value.trim();
+  const nombreJefeCompleto = document.getElementById("alta-nombrejefe").value.trim();
+  const responsable = document.getElementById("alta-responsable").value.trim();
+  const motivo = document.getElementById("alta-motivo").value.trim();
+  if (!documento || !apellidoPaterno || !apellidoMaterno || !nombres || !documentoMadre || !nombreMadreCompleto || !documentoJefe || !nombreJefeCompleto || !responsable || !motivo) {
+    alert("Completa los campos obligatorios: documento, apellidos y nombres del niño, datos de la madre, datos del jefe de familia, responsable y motivo.");
+    return;
+  }
+  try {
+    const hoy = fechaHoyPeru();
+    const edadAlSolicitar = fechaNacimiento ? formatEdad(calcularEdad(new Date(fechaNacimiento + "T00:00:00"), hoy)) : "";
+    const heredaDeBaja = ultimaCoincidenciaAlta && ultimaCoincidenciaAlta.documento === documento;
+    indice.altas.push({
+      id: idUnico(), documento, codigoPadron,
+      cnv: heredaDeBaja ? (ultimaCoincidenciaAlta.cnv || "") : "",
+      tipoDocumento: heredaDeBaja ? (ultimaCoincidenciaAlta.tipoDocumento || "") : "",
+      apellidoPaterno, apellidoMaterno, nombres, fechaNacimiento, edadAlSolicitar,
+      jurisdiccion, direccionActual, celular,
+      documentoMadre, nombreMadreCompleto, documentoJefe, nombreJefeCompleto,
+      responsable, motivo, fechaSolicitud: hoy.toISOString().slice(0, 10), estado: "PENDIENTE", fechaAlta: null, edadAlDarDeAlta: null,
+      registradoPor: (typeof REGISTRADORES !== "undefined" && REGISTRADORES.CLAUDIO) || {},
+    });
+    await guardarIndice();
+    alert("Solicitud de alta registrada en OneDrive.");
+    CAMPOS_ALTA_TEXTO.forEach(id => document.getElementById(id).value = "");
+    document.getElementById("alta-jurisdiccion").selectedIndex = 0;
+    document.getElementById("alta-aviso").innerHTML = "";
+    ultimaCoincidenciaAlta = null;
+    renderTablas();
+  } catch (e) {
+    alert("No se pudo registrar el alta. Error real: " + e.message + "\n\nCopia este mensaje y compártelo para revisarlo.");
+    console.error(e);
+  }
+}
+
+async function verificarEstados() {
+  const fecha = document.getElementById("verificar-fecha").value;
+  const div = document.getElementById("verificar-resultado");
+  if (!fecha) { alert("Selecciona la fecha a verificar."); return; }
+  div.innerHTML = `<div class="aviso-info">Leyendo tus reportes del ${fecha}…</div>`;
+
+  const { encontrados, leidos, faltantes } = await codigosDelDia(fecha);
+  if (!leidos.length) {
+    div.innerHTML = `<div class="aviso-error">No pude leer ningún archivo de esa fecha en 01_REPORTES_DIARIOS/${fecha}/.<br><small>Faltantes: ${faltantes.join(", ")}</small></div>`;
+    return;
+  }
+
+  let nBajas = 0, nAltas = 0;
+  const ref = new Date(fecha + "T00:00:00");
+  indice.bajas.forEach(b => {
+    if (b.estado === "PENDIENTE" && b.codigoPadron && !encontrados.has(String(b.codigoPadron).trim())) {
+      b.estado = "CONFIRMADA"; b.fechaBaja = fecha;
+      b.edadAlDarDeBaja = b.fechaNacimiento ? formatEdad(calcularEdad(new Date(convertirFechaISO(b.fechaNacimiento) + "T00:00:00"), ref)) : "—";
+      nBajas++;
+    }
+  });
+  for (const a of indice.altas) {
+    if (a.estado !== "PENDIENTE") continue;
+    const { datos: encontrada } = await buscarEnPadronDelDia(fecha, a.documento);
+    if (encontrada) {
+      a.estado = "CONFIRMADA"; a.fechaAlta = fecha;
+      a.edadAlDarDeAlta = a.fechaNacimiento ? formatEdad(calcularEdad(new Date(a.fechaNacimiento + "T00:00:00"), ref)) : "—";
+      nAltas++;
+    }
+  }
+  await guardarIndice();
+  const avisoFaltantes = faltantes.length ? ` <br><small>No se pudo leer: ${faltantes.join(", ")}</small>` : "";
+  div.innerHTML = `<div class="aviso-ok">Bajas confirmadas: ${nBajas} · Altas confirmadas: ${nAltas}. Ve a la pestaña Registro para verlas.${avisoFaltantes}</div>`;
+  renderTablas();
+}
+
+function badge(estado) { return `<span class="badge ${estado === "CONFIRMADA" ? "badge-confirmada" : "badge-pendiente"}">${estado}</span>`; }
+function filaFicha(label, value) {
+  return `<div class="ficha-item"><div class="k">${label}</div><div class="v">${value || "-"}</div></div>`;
+}
+function toggleFichaTabla(prefijo, idx) {
+  const el = document.getElementById(`ficha-${prefijo}-${idx}`);
+  const open = el.style.display === "block";
+  document.querySelectorAll(".ficha").forEach(f => f.style.display = "none");
+  el.style.display = open ? "none" : "block";
+}
+
+function renderTablas() {
+  poblarSelectorMeses();
+  renderTablaBajas();
+  renderTablaAltas();
+}
+
+function filtroCoincide(obj, termino) {
+  if (!termino) return true;
+  const t = termino.toLowerCase();
+  const documento = String(obj.documento || "").toLowerCase();
+  const nombre = nombreCompleto(obj).toLowerCase();
+  const responsable = String(obj.responsable || "").toLowerCase();
+  const jurisdiccion = String(obj.jurisdiccion || "").toLowerCase();
+  return documento.includes(t) || nombre.includes(t) || responsable.includes(t) || jurisdiccion.includes(t);
+}
+
+function renderTablaBajas() {
+  const cont = document.getElementById("tabla-bajas");
+  const termino = (document.getElementById("searchRegistro")?.value || "").trim();
+  const lista = indice.bajas.filter(b => filtroCoincide(b, termino));
+  document.getElementById("contadorBajas").textContent = lista.length;
+  if (!lista.length) { cont.innerHTML = `<div class="empty">${indice.bajas.length ? "Ningún resultado para esa búsqueda." : "Sin bajas registradas."}</div>`; return; }
+  let html = `<table><tr><th>Código</th><th>Nombre</th><th>Solicitada</th><th>Estado</th><th>Fecha de baja</th></tr>`;
+  lista.forEach((b) => {
+    const idx = indice.bajas.indexOf(b);
+    html += `<tr class="clickable" onclick="toggleFichaTabla('baja', ${idx})"><td>${b.codigoPadron}</td><td>${nombreCompleto(b)}</td><td>${b.fechaSolicitud}</td><td>${badge(b.estado)}</td><td>${b.fechaBaja||"—"}</td></tr>`;
+    const nombreMadreTxt = nombreCompleto({ apellidoPaterno: b.apellidoPaternoMadre, apellidoMaterno: b.apellidoMaternoMadre, nombres: b.nombresMadre });
+    const nombreJefeTxt = nombreCompleto({ apellidoPaterno: b.apellidoPaternoJefe, apellidoMaterno: b.apellidoMaternoJefe, nombres: b.nombresJefe });
+    html += `<tr><td colspan="5"><div class="ficha" id="ficha-baja-${idx}" style="display:none;"><div class="ficha-grid">
+      ${filaFicha(b.tipoDocumento === "CNV" ? "Documento CNV" : "Documento CUI/DNI", b.documento)}
+      ${filaFicha("Fecha de nacimiento", b.fechaNacimiento)}
+      ${filaFicha("Edad al solicitar", b.edadAlSolicitar)}
+      ${filaFicha("Dirección", b.direccionActual)}
+      ${filaFicha("Referencia", b.referencia)}
+      ${filaFicha("Tipo de seguro", b.seguro)}
+      ${filaFicha("EE.SS. atención", b.eessAtencion)}
+      ${filaFicha("Jurisdicción", b.jurisdiccion)}
+      ${filaFicha("Madre", nombreMadreTxt ? `${nombreMadreTxt} (Doc. ${b.documentoMadre||"s/d"})` : "-")}
+      ${filaFicha("Jefe de familia", nombreJefeTxt ? `${nombreJefeTxt} (Doc. ${b.documentoJefe||"s/d"})` : "-")}
+      ${filaFicha("Celular madre", b.celularMadre)}
+      ${filaFicha("Celular adicional", b.celularAdicionalMadre)}
+      ${filaFicha("Responsable", b.responsable)}
+      ${filaFicha("Edad al dar de baja", b.edadAlDarDeBaja)}
+      <div class="ficha-item ficha-full"><div class="k">Motivo</div><div class="v" style="font-weight:400;">${b.motivo||"-"}</div></div>
+    </div></div></td></tr>`;
+  });
+  cont.innerHTML = html + `</table>`;
+}
+
+function renderTablaAltas() {
+  const cont = document.getElementById("tabla-altas");
+  const termino = (document.getElementById("searchRegistro")?.value || "").trim();
+  const lista = indice.altas.filter(a => filtroCoincide(a, termino));
+  document.getElementById("contadorAltas").textContent = lista.length;
+  if (!lista.length) { cont.innerHTML = `<div class="empty">${indice.altas.length ? "Ningún resultado para esa búsqueda." : "Sin altas registradas."}</div>`; return; }
+  let html = `<table><tr><th>Código</th><th>Nombre</th><th>Solicitada</th><th>Estado</th><th>Fecha de alta</th></tr>`;
+  lista.forEach((a) => {
+    const idx = indice.altas.indexOf(a);
+    html += `<tr class="clickable" onclick="toggleFichaTabla('alta', ${idx})"><td>${a.codigoPadron||"—"}</td><td>${nombreCompleto(a)}</td><td>${a.fechaSolicitud}</td><td>${badge(a.estado)}</td><td>${a.fechaAlta||"—"}</td></tr>`;
+    html += `<tr><td colspan="5"><div class="ficha" id="ficha-alta-${idx}" style="display:none;"><div class="ficha-grid">
+      ${filaFicha(a.tipoDocumento === "CNV" ? "Documento CNV" : (a.tipoDocumento ? "Documento CUI/DNI" : "Documento"), a.documento)}
+      ${filaFicha("Fecha de nacimiento", a.fechaNacimiento)}
+      ${filaFicha("Edad al solicitar", a.edadAlSolicitar)}
+      ${filaFicha("Jurisdicción", a.jurisdiccion)}
+      ${filaFicha("Dirección nueva", a.direccionActual)}
+      ${filaFicha("Celular nuevo", a.celular)}
+      ${filaFicha("Madre", a.nombreMadreCompleto ? `${a.nombreMadreCompleto} (Doc. ${a.documentoMadre||"s/d"})` : "-")}
+      ${filaFicha("Jefe de familia", a.nombreJefeCompleto ? `${a.nombreJefeCompleto} (Doc. ${a.documentoJefe||"s/d"})` : "-")}
+      ${filaFicha("Responsable", a.responsable)}
+      ${filaFicha("Edad al dar de alta", a.edadAlDarDeAlta)}
+      <div class="ficha-item ficha-full"><div class="k">Motivo</div><div class="v" style="font-weight:400;">${a.motivo||"-"}</div></div>
+    </div></div></td></tr>`;
+  });
+  cont.innerHTML = html + `</table>`;
+}
+
+const MESES_ES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+function poblarSelectorMeses() {
+  const sel = document.getElementById("mes-descarga");
+  const valorPrevio = sel.value;
+  const meses = new Set();
+  [...indice.bajas, ...indice.altas].forEach(r => { if (r.fechaSolicitud) meses.add(r.fechaSolicitud.slice(0, 7)); });
+  const ordenados = [...meses].sort();
+  sel.innerHTML = `<option value="">Todos los meses</option>` + ordenados.map(m => {
+    const [y, mNum] = m.split("-").map(Number);
+    return `<option value="${m}">${MESES_ES[mNum - 1]} ${y}</option>`;
+  }).join("");
+  if (ordenados.includes(valorPrevio)) sel.value = valorPrevio;
+}
+
+function aFechaSerial(s) {
+  if (!s) return "";
+  const [y, m, d] = String(s).slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000);
+}
+
+function descargarExcel() {
+  const mesFiltro = document.getElementById("mes-descarga").value;
+  const bajas = mesFiltro ? indice.bajas.filter(b => (b.fechaSolicitud || "").startsWith(mesFiltro)) : indice.bajas;
+  const altas = mesFiltro ? indice.altas.filter(a => (a.fechaSolicitud || "").startsWith(mesFiltro)) : indice.altas;
+  if (!bajas.length && !altas.length) { alert("No hay registros para ese mes."); return; }
+  const etiquetaMes = mesFiltro ? `${MESES_ES[Number(mesFiltro.split("-")[1]) - 1]} ${mesFiltro.split("-")[0]}` : "todos los periodos";
+
+  const mayus = v => (v == null ? "" : String(v).toUpperCase());
+  const fontBase = { name: "Arial", sz: 10 };
+  const tituloStyle = { font: { name: "Arial", sz: 12, bold: true, color: { rgb: "163F7A" } } };
+  const headerColorDefault = "84AEE0";
+  const bodyStyleBase = { font: fontBase, alignment: { horizontal: "left", vertical: "center" } };
+
+  // Mismo patrón que en transito-modelo.html: título + fila en blanco + encabezados
+  // grandes en mayúscula (fila 3) + columna ITEM + ancho dinámico según el largo del
+  // encabezado. colsSinMayus son las columnas de edad, que siempre van en minúscula.
+  // coloresEncabezado permite pintar columnas específicas del encabezado de otro color.
+  function armarHoja(titulo, encabezados, filasCrudas, colsFecha, colsWrapObj, colsSinMayus = [], coloresEncabezado = {}, colsCentradasExtra = []) {
+    const encabezadosFinal = ["ITEM", ...encabezados.map(h => h.toUpperCase())];
+    const filas = filasCrudas.map((fila, i) => {
+      const filaConvertida = fila.map((v, c) => (colsFecha.includes(c) || colsSinMayus.includes(c) || typeof v === "number") ? v : mayus(v));
+      return [i + 1, ...filaConvertida];
+    });
+    const ws = XLSX.utils.aoa_to_sheet([[titulo.toUpperCase()], [], encabezadosFinal, ...filas]);
+    const NCOLS = encabezadosFinal.length;
+    ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: NCOLS - 1 } }];
+    ws["!cols"] = encabezadosFinal.map((h, c) => {
+      if (c === 0) return { wch: 6 };
+      const idxOriginal = c - 1;
+      if (colsWrapObj[idxOriginal]) return { wch: colsWrapObj[idxOriginal] };
+      return { wch: Math.max(16, h.length + 4) };
+    });
+
+    const range = XLSX.utils.decode_range(ws["!ref"]);
+    for (let R = range.s.r; R <= range.e.r; R++) {
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        const addr = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws[addr]) continue;
+        if (R === 0) { ws[addr].s = tituloStyle; continue; }
+        if (R === 2) {
+          const idxOriginal = C - 1;
+          const colorFondo = (idxOriginal >= 0 && coloresEncabezado[idxOriginal]) || headerColorDefault;
+          ws[addr].s = { font: { name: "Arial", sz: 11, bold: true, color: { rgb: "163F7A" } }, fill: { fgColor: { rgb: colorFondo } }, alignment: { horizontal: "center", vertical: "center", wrapText: true } };
+          continue;
+        }
+        if (R < 3) continue;
+        const idxOriginal = C - 1;
+        const esFecha = C > 0 && colsFecha.includes(idxOriginal) && typeof ws[addr].v === "number";
+        const esEdad = C > 0 && colsSinMayus.includes(idxOriginal);
+        const esItem = C === 0;
+        const esCentradaExtra = C > 0 && colsCentradasExtra.includes(idxOriginal);
+        const esWrap = C > 0 && Object.prototype.hasOwnProperty.call(colsWrapObj, idxOriginal);
+        let estilo = { ...bodyStyleBase };
+        if (esWrap) estilo.alignment = { horizontal: "left", vertical: "center", wrapText: true };
+        if (esFecha || esEdad || esItem || esCentradaExtra) estilo.alignment = { horizontal: "center", vertical: "center" };
+        if (esFecha) { estilo = { ...estilo, numFmt: "dd/mm/yyyy" }; ws[addr].t = "n"; }
+        ws[addr].s = estilo;
+      }
+    }
+    ws["!views"] = [{ zoomScale: 90, zoomScaleNormal: 90 }];
+    return ws;
+  }
+
+  // ── Hoja BAJAS ──────────────────────────────────────────────────────
+  const cabB = ["Código Padrón","Documento","CNV","Apellido Paterno","Apellido Materno","Nombres","Fecha nacimiento","Edad al solicitar","Dirección","Referencia","Tipo seguro","EE.SS. atención","Jurisdicción","Documento madre","Nombre madre","Celular madre","Celular adicional","Vínculo jefe familia","Documento jefe familia","Nombre jefe familia","Responsable","Motivo","Fecha solicitud","Estado","Fecha de baja","Edad al dar de baja"];
+  const filasB = bajas.map(b => [b.codigoPadron,b.documento,b.cnv||"",b.apellidoPaterno,b.apellidoMaterno,b.nombres,aFechaSerial(b.fechaNacimiento && convertirFechaISO(b.fechaNacimiento)),b.edadAlSolicitar,b.direccionActual,b.referencia,b.seguro,b.eessAtencion,b.jurisdiccion,b.documentoMadre,nombreCompleto({apellidoPaterno:b.apellidoPaternoMadre,apellidoMaterno:b.apellidoMaternoMadre,nombres:b.nombresMadre}),b.celularMadre,b.celularAdicionalMadre,b.vinculoJefe,b.documentoJefe,nombreCompleto({apellidoPaterno:b.apellidoPaternoJefe,apellidoMaterno:b.apellidoMaternoJefe,nombres:b.nombresJefe}),b.responsable,b.motivo,aFechaSerial(b.fechaSolicitud),b.estado,aFechaSerial(b.fechaBaja),b.edadAlDarDeBaja]);
+  // índices (0-based, sin contar ITEM): 0 CódigoPadrón,1 Documento,2 CNV,3 ApePat,4 ApeMat,
+  // 5 Nombres,6 FechaNac,7 EdadSolicitar,8 Dirección,9 Referencia,10 TipoSeguro,11 EESSAtención,
+  // 12 Jurisdicción,13 DocMadre,14 NombreMadre,15 CelularMadre,16 CelularAdicional,17 VínculoJefe,
+  // 18 DocJefe,19 NombreJefe,20 Responsable,21 Motivo,22 FechaSolicitud,23 Estado,24 FechaBaja,25 EdadDarBaja
+  const wsB = armarHoja(
+    `Solicitudes de baja — ${etiquetaMes}`, cabB, filasB,
+    [6, 22, 24],                                              // fechas
+    { 5: 28, 8: 40, 11: 27, 12: 27, 14: 40, 17: 16, 18: 22, 19: 40, 20: 25, 21: 55 }, // anchos (con wrap donde corresponde)
+    [7, 25],                                                   // edades siempre en minúscula
+    { 20: "B8CCE4", 21: "B8CCE4", 22: "D9D9D9", 23: "D9D9D9", 24: "D9D9D9", 25: "D9D9D9" }, // colores de encabezado
+    [10, 23]                                                   // centrado extra: Tipo seguro, Estado
+  );
+
+  // ── Hoja ALTAS ──────────────────────────────────────────────────────
+  // El código de padrón NO cambia entre la baja y la alta — es el mismo. Por eso ya
+  // no existe una columna "código al reaparecer": solo se guarda una vez.
+  const cabA = ["Documento","Código Padrón","Apellido Paterno","Apellido Materno","Nombres","Fecha nacimiento","Edad al solicitar","Jurisdicción","Dirección nueva","Celular nuevo","Documento madre","Nombre madre","Documento jefe familia","Nombre jefe familia","Responsable","Motivo","Fecha solicitud","Estado","Fecha de alta","Edad al dar de alta"];
+  const filasA = altas.map(a => [a.documento,a.codigoPadron,a.apellidoPaterno,a.apellidoMaterno,a.nombres,aFechaSerial(a.fechaNacimiento),a.edadAlSolicitar,a.jurisdiccion,a.direccionActual,a.celular,a.documentoMadre,a.nombreMadreCompleto,a.documentoJefe,a.nombreJefeCompleto,a.responsable,a.motivo,aFechaSerial(a.fechaSolicitud),a.estado,aFechaSerial(a.fechaAlta),a.edadAlDarDeAlta]);
+  // índices: 0 Documento,1 CódigoPadrón,2 ApePat,3 ApeMat,4 Nombres,5 FechaNac,6 EdadSolicitar,
+  // 7 Jurisdicción,8 DirecciónNueva,9 CelularNuevo,10 DocMadre,11 NombreMadre,12 DocJefe,
+  // 13 NombreJefe,14 Responsable,15 Motivo,16 FechaSolicitud,17 Estado,18 FechaAlta,19 EdadDarAlta
+  const wsA = armarHoja(
+    `Solicitudes de alta — ${etiquetaMes}`, cabA, filasA,
+    [5, 16, 18],                                               // fechas
+    { 4: 28, 7: 27, 8: 40, 11: 40, 12: 22, 13: 40, 14: 25, 15: 55, 19: 23 }, // anchos (con wrap donde corresponde)
+    [6, 19],                                                   // edades siempre en minúscula
+    { 14: "B8CCE4", 15: "B8CCE4", 16: "D9D9D9", 17: "D9D9D9", 18: "D9D9D9", 19: "D9D9D9" }, // colores de encabezado
+    [17]                                                        // centrado extra: Estado
+  );
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsB, "BAJAS");
+  XLSX.utils.book_append_sheet(wb, wsA, "ALTAS");
+  const sufijo = mesFiltro || "TODOS";
+  XLSX.writeFile(wb, `MODELO_Bajas_Altas_${sufijo}_${fechaHoyPeru().toISOString().slice(0,10)}.xlsx`);
+}
+// Todo lo que se escriba a mano en los formularios de baja/alta queda en mayúsculas,
+// igual que en tránsito, para no mezclar mayúsculas y minúsculas en el Excel.
+function activarMayusculasFormulario() {
+  document.querySelectorAll("#panel-baja input[type=text], #panel-baja textarea, #panel-alta input[type=text], #panel-alta textarea").forEach(el => {
+    el.addEventListener("input", () => {
+      const pos = el.selectionStart;
+      el.value = el.value.toUpperCase();
+      if (pos != null) el.setSelectionRange(pos, pos);
+    });
+  });
+}
+activarMayusculasFormulario();
+
+window.addEventListener("load", async () => {
+  const yaConectado = await inicializarLogin();
+  if (yaConectado) await onSignedIn();
+});
+
+async function onSignedIn() {
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("appScreen").style.display = "block";
+  document.getElementById("loginBtn").style.display = "none";
+  document.getElementById("logoutBtn").style.display = "inline-block";
+  document.getElementById("userInfo").innerText = "Conectado como: " + (account ? account.username : "");
+  const hoy = fechaHoyPeru().toISOString().slice(0, 10);
+  document.getElementById("baja-fecha").value = hoy;
+  document.getElementById("verificar-fecha").value = hoy;
+  await cargarIndice();
+  renderTablas();
+}
+</script>
+</body>
+</html>
